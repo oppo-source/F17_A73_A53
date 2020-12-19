@@ -1,0 +1,5 @@
+config OPPO_MULTI_KSWAPD
+       bool "Enable oppo multi kswapd"
+       default n
+       help
+         oppo multi kswapd

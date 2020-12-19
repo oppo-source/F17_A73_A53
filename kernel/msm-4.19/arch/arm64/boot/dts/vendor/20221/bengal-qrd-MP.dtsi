@@ -1,0 +1,901 @@
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/iio/qcom,spmi-vadc.h>
+#include <dt-bindings/input/input.h>
+#include "bengal-thermal-overlay.dtsi"
+#include "bengal-audio-overlay.dtsi"
+#include "bengal-sde-display.dtsi"
+#include "camera/bengal-camera-sensor-qrd.dtsi"
+
+&qupv3_se1_i2c {
+	status = "ok";
+	#include "smb1355.dtsi"
+};
+
+&soc {
+	qrd_batterydata: qcom,battery-data {
+		qcom,batt-id-range-pct = <15>;
+		//#ifdef VENDOR_EDIT
+		/*wangchao@ODM.BSP.charge, 2019/12/6, Add oppo battery table dtsi*/
+			#include "oppo_battery_5000mah_1k_pmi632_Liwinon.dtsi"
+			#include "oppo_battery_5000mah_15k_pmi632_Coslight.dtsi"
+			#include "oppo_battery_5000mah_68k_pmi632_Atl.dtsi"
+		//#else
+			//#include "qg-batterydata-atl466271_3300mAh.dtsi"
+		//#endif
+	};
+
+       //#ifdef VENDOR_EDIT
+       /* Fuchun.Liao@BSP.CHG.Basic 2018/11/26 modify for oppo rf cable monitor */
+       oppo_rf_cable {
+               compatible = "oppo,rf_cable";
+               interrupt-parent = <&tlmm>;
+               rf_cable_0_support;
+               // rf_cable_1_support; 
+               rf,cable0-gpio = <&tlmm 39 0>;
+               // rf,cable1-gpio = <&tlmm 58 0>;
+               rf,cable-support-timer = <0>;
+               pinctrl-names = "rf_cable_active";
+               pinctrl-0 = <&rf_cable0_active>;
+       };
+       //#endif /* VENDOR_EDIT */
+
+	//#ifdef ODM_HQ_EDIT
+	/*Dianlong.Li@ODM_HQ.SYSTEM 2020/05/21 Add node of devinfo for sub board id*/
+	devinfo {
+		compatible = "oppo-devinfo";
+		sdcard_detect = <&tlmm 88 GPIO_ACTIVE_HIGH>;
+
+		io-channels= <&pmi632_vadc ADC_GPIO3_PU2>;
+		io-channel-names= "vph_pwr_voltage_sub";
+
+		main-sub {
+			compatible = "hw-match, main-sub";
+			use_pmic_adc;
+			adc_ranges = <  0 249
+					250 400
+					401 849
+					850 1050
+					1051 1179
+					1180 1300
+					1301 1599
+					1600 1900>;
+			aboard-patterns = <7 5 5 3 3 3 5 5 5 1 5 5 5 5 5>;
+
+			/*main board*/
+			match-projects = <20021 20221 20222 20223 20224 20225 20226 20227 20228 20229 20202 20203 20204 20207 20208>;
+		};
+	};
+	//#endif
+
+	//#ifdef ODM_HQ_EDIT
+	//xuyechen@sensor.bsp.kernel, 2020/06/18,add for sensor devinfo
+        oppo_sensor {
+		status = "ok";
+		compatible = "sensor-devinfo";
+		als-type = <1>;
+		ps-type = <1>;
+		ps-cali-type = <1>;
+		ps-match-id = <5>;
+		als-match-id = <5>;
+		is-unit-device = <1>;
+		is-als-dri = <1>;
+		irq-number = <35>;
+		bus-number = <1>;
+		als-factor = <200>;
+		ps-parms-id = <0>;
+		als-row-coe = <200>;
+	};
+	//#endif
+};
+
+&pmi632_qg {
+	qcom,battery-data = <&qrd_batterydata>;
+	qcom,qg-iterm-ma = <430>;
+	qcom,hold-soc-while-full;
+	qcom,linearize-soc;
+	qcom,qg-use-s7-ocv;
+	qcom,qg-ext-sns;
+	qcom,s3-entry-ibat-ua = <18000>;
+	qcom,s3-exit-ibat-ua = <38000>;
+};
+
+&bcl_sensor {
+	qcom,ibat-use-qg-adc-5a;
+	dp-qcom,ibat-use-qg-adc-5a;
+/delete-property/ qcom,ibat-use-qg-adc-5a;
+wxf;
+};
+
+&pmi632_charger {
+	qcom,battery-data = <&qrd_batterydata>;
+	qcom,suspend-input-on-debug-batt;
+	qcom,sw-jeita-enable;
+	qcom,step-charging-enable;
+	/* SMB1355 only */
+	qcom,sec-charger-config = <2>;
+	qcom,hvdcp2-max-icl-ua = <2000000>;
+	dpdm-supply = <&qusb_phy0>;
+	qcom,charger-temp-max = <800>;
+	qcom,smb-temp-max = <800>;
+	qcom,auto-recharge-soc = <98>;
+	qcom,flash-disable-soc = <1>;
+	qcom,hw-die-temp-mitigation;
+	qcom,hw-connector-mitigation;
+	qcom,connector-internal-pull-kohm = <100>;
+	qcom,float-option = <1>;
+	qcom,thermal-mitigation = <4200000 3500000 3000000
+			2500000 2000000 1500000 1000000 500000>;
+	qcom,qg-ext-sns;
+};
+
+&pmi632_gpios {
+	smb_en {
+		smb_en_default: smb_en_default {
+			pins = "gpio2";
+			function = "func1";
+			output-enable;
+		};
+	};
+
+	pmi632_sense {
+		/* GPIO 7 and 8 are external-sense pins for PMI632 */
+		pmi632_sense_default: pmi632_sense_default {
+			pins = "gpio7", "gpio8";
+			bias-high-impedance;	/* disable the GPIO */
+			bias-disable;		/* no-pull */
+		};
+	};
+
+	pmi632_ctm {
+		/* Disable GPIO1 for h/w base mitigation */
+		pmi632_ctm_default: pmi632_ctm_default {
+			pins = "gpio1";
+			bias-high-impedance;	/* disable the GPIO */
+			bias-disable;		/* no-pull */
+		};
+	};
+};
+
+&pm6125_gpios {
+	key_vol_up {
+		key_vol_up_default: key_vol_up_default {
+			pins = "gpio5";
+			function = "normal";
+			input-enable;
+			bias-pull-up;
+			power-source = <0>;
+		};
+	};
+};
+
+&usb0 {
+	extcon = <&pmi632_charger>, <&eud>;
+};
+
+&qusb_phy0 {
+	qcom,qusb-phy-init-seq = <0xf8 0x80
+				0xb3 0x84
+				0x81 0x88
+				0xc7 0x8c
+				0x30 0x08
+				0x79 0x0c
+				0x21 0x10
+				0x14 0x9c
+				0x80 0x04
+				0x9f 0x1c
+				0x00 0x18>;
+//#ifdef ODM_HQ_EDIT
+/*zhouyi@ODM_HQ.Charge add usb_eyes_tune2 0x83 for soda 2020/06/15*/
+	qcom,tune2-efuse-correction = <(-3)>;
+//#endif
+};
+
+&soc {
+	gpio_keys {
+		compatible = "gpio-keys";
+		label = "gpio-keys";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&key_vol_up_default>;
+
+		vol_up {
+			label = "volume_up";
+			gpios = <&pm6125_gpios 5 GPIO_ACTIVE_LOW>;
+			linux,input-type = <1>;
+                        //#ifdef ODM_HQ_EDIT
+			/*Dianlong.Li@ODM_HQ.SYSTEM 2020/05/21 After T0 , change the volume key */
+			change-volume-key;
+                        //#endif
+			linux,code = <KEY_VOLUMEUP>;
+			linux,can-disable;
+			debounce-interval = <15>;
+			gpio-key,wakeup;
+		};
+	};
+    // #ifdef VENDOR_EDIT
+    /* Baolin.Hu@Bsp.Fingerprint.Secure 2020-05-07 add for secure proc */
+    oppo_secure_common {
+        compatible = "oppo,secure_common";
+    };
+    //#endif //VENDOR_EDIT
+};
+
+&bengal_snd {
+	qcom,model = "bengal-qrd-snd-card";
+	qcom,msm-mi2s-master = <1>, <1>, <1>, <1>;
+	qcom,wcn-btfm = <1>;
+	qcom,ext-disp-audio-rx = <0>;
+	qcom,audio-routing =
+		"AMIC1", "MIC BIAS1",
+		"MIC BIAS1", "Analog Mic1",
+		"AMIC2", "MIC BIAS2",
+		"MIC BIAS2", "Analog Mic2",
+		"AMIC3", "MIC BIAS3",
+		"MIC BIAS3", "Analog Mic3",
+		"AMIC4", "MIC BIAS3",
+		"MIC BIAS3", "Analog Mic4",
+		"IN1_HPHL", "HPHL_OUT",
+		"IN2_HPHR", "HPHR_OUT",
+		"IN3_AUX", "AUX_OUT",
+		"SpkrMono WSA_IN", "AUX",
+		"TX SWR_MIC0", "ADC1_OUTPUT",
+		"TX SWR_MIC4", "ADC2_OUTPUT",
+		"TX SWR_MIC5", "ADC3_OUTPUT",
+		"TX SWR_MIC0", "VA_TX_SWR_CLK",
+		"TX SWR_MIC1", "VA_TX_SWR_CLK",
+		"TX SWR_MIC2", "VA_TX_SWR_CLK",
+		"TX SWR_MIC3", "VA_TX_SWR_CLK",
+		"TX SWR_MIC4", "VA_TX_SWR_CLK",
+		"TX SWR_MIC5", "VA_TX_SWR_CLK",
+		"TX SWR_MIC6", "VA_TX_SWR_CLK",
+		"TX SWR_MIC7", "VA_TX_SWR_CLK",
+		"TX SWR_MIC8", "VA_TX_SWR_CLK",
+		"TX SWR_MIC9", "VA_TX_SWR_CLK",
+		"TX SWR_MIC10", "VA_TX_SWR_CLK",
+		"TX SWR_MIC11", "VA_TX_SWR_CLK",
+		"RX_TX DEC0_INP", "TX DEC0 MUX",
+		"RX_TX DEC1_INP", "TX DEC1 MUX",
+		"RX_TX DEC2_INP", "TX DEC2 MUX",
+		"RX_TX DEC3_INP", "TX DEC3 MUX",
+		"TX_AIF1 CAP", "VA_TX_SWR_CLK",
+		"TX_AIF2 CAP", "VA_TX_SWR_CLK",
+		"TX_AIF3 CAP", "VA_TX_SWR_CLK",
+		"VA SWR_MIC0", "ADC1_OUTPUT",
+		"VA SWR_MIC4", "ADC2_OUTPUT",
+		"VA SWR_MIC5", "ADC3_OUTPUT";
+	qcom,msm-mbhc-hphl-swh = <1>;
+	qcom,msm-mbhc-gnd-swh = <1>;
+	asoc-codec  = <&stub_codec>, <&bolero>;
+	asoc-codec-names = "msm-stub-codec.1", "bolero_codec";
+	qcom,wsa-max-devs = <0>;
+	qcom,wsa-devs = <0>;
+	qcom,wsa-aux-dev-prefix = "SpkrMono";
+	qcom,codec-max-aux-devs = <1>;
+	qcom,codec-aux-devs = <&wcd937x_codec>;
+	qcom,msm_audio_ssr_devs = <&audio_apr>, <&q6core>, <&bolero>,
+				<&lpi_tlmm>;
+};
+&tlmm {
+	/* SGM interrupt pin */
+	sgm_int_pin {
+		sgm_int_default: sgm_int_default {
+			mux {
+				pins = "gpio70";
+				function ="gpio";
+			};
+			config {
+				pins = "gpio70";
+				bias-pull-up;           /* PULL UP*/
+				input-enable;
+			};
+		};
+	};
+};
+
+
+&qupv3_se1_i2c {
+	status = "ok";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	nq@28 {
+		compatible = "qcom,nq-nci";
+		reg = <0x28>;
+		qcom,nq-irq = <&tlmm 70 0x00>;
+		qcom,nq-ven = <&tlmm 69 0x00>;
+		qcom,nq-firm = <&tlmm 31 0x00>;
+		qcom,nq-clkreq = <&tlmm 86 0x00>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <70 0>;
+		interrupt-names = "nfc_irq";
+		pinctrl-names = "nfc_active", "nfc_suspend";
+		pinctrl-0 = <&nfc_int_active &nfc_enable_active
+				&nfc_clk_req_active>;
+		pinctrl-1 = <&nfc_int_suspend &nfc_enable_suspend
+				&nfc_clk_req_suspend>;
+	};
+	SGM41511@6B{
+		compatible = "SG,SGM41511-charger";
+		reg = <0x6B>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <70 2>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&sgm_int_default>;
+
+		qcom,parallel-mode = <1>;
+		qcom,disable-ctm;
+		qcom,hw-die-temp-mitigation;
+
+		SGM,SGM41511,usb-vlim = <4600>;
+		SGM,SGM41511,usb-ilim = <500>;
+		SGM,SGM41511,usb-vreg = <4368>;
+		SGM,SGM41511,usb-vreg-jp = <4320>;
+		SGM,SGM41511,usb-ichg = <500>;
+
+		SGM,SGM41511,ta-vlim = <4600>;
+		SGM,SGM41511,ta-ilim = <3200>;
+		SGM,SGM41511,ta-vreg = <4368>;
+		SGM,SGM41511,ta-vreg-jp = <4320>;
+		SGM,SGM41511,ta-ichg = <1200>;
+
+		SGM,SGM41511,precharge-current = <256>;
+		SGM,SGM41511,termination-current = <120>;
+		SGM,SGM41511,boost-voltage = <4998>;
+		SGM,SGM41511,boost-current = <1200>;
+		SGM,SGM41511,enable_term;
+		SGM,SGM41511,stat-pin-ctrl = <0>;
+		SGM,SGM41511,vac-ovp-threshold = <6500>;
+
+		SGM,SGM41511,jeita-hot-degc = <550>;
+		SGM,SGM41511,jeita-warm-degc = <450>;
+		SGM,SGM41511,jeita-cool-degc = <120>;
+		SGM,SGM41511,jeita-little-cool-degc = <50>;
+		SGM,SGM41511,jeita-cold-degc = <0>;
+		SGM,SGM41511,jeita-hot-hysteresis = <20>;
+		SGM,SGM41511,jeita-cold-hysteresis = <20>;
+		SGM,SGM41511,jeita-little-cool-ma = <240>;
+		SGM,SGM41511,jeita-little-cool-over4v-ma = <240>;
+		SGM,SGM41511,jeita-cool-ma = <840>;
+		SGM,SGM41511,jeita-cool-over4v-ma = <540>;
+		SGM,SGM41511,jeita-cool-mv = <4368>;
+		SGM,SGM41511,jeita-warm-ma = <1200>;
+		SGM,SGM41511,jeita-warm-mv = <4200>;
+		SGM,SGM41511,software-jeita-supported;
+		SGM,thermal-mitigation = <1200 500 200 500 0>;
+	
+		//add for reduce current when screen on
+		SGM,SGM41511,reduce-chg-curr-lcd-on;
+		SGM,SGM41511,lcd-on-usb-icl= <3200>;//change too high to not use this current
+
+		SGM41511_otg_vreg: SGM,SGM41511-boost-otg {
+				regulator-name = "SGM41511_otg_vreg";
+		};
+	};
+};
+
+&sdhc_1 {
+	vdd-supply = <&L24A>;
+	qcom,vdd-voltage-level = <2960000 2960000>;
+	qcom,vdd-current-level = <0 570000>;
+
+	vdd-io-supply = <&L11A>;
+	qcom,vdd-io-always-on;
+	qcom,vdd-io-lpm-sup;
+	qcom,vdd-io-voltage-level = <1800000 1800000>;
+	qcom,vdd-io-current-level = <0 325000>;
+
+	pinctrl-names = "active", "sleep";
+	pinctrl-0 = <&sdc1_clk_on &sdc1_cmd_on &sdc1_data_on
+					&sdc1_rclk_on>;
+	pinctrl-1 = <&sdc1_clk_off &sdc1_cmd_off &sdc1_data_off
+					&sdc1_rclk_off>;
+
+	status = "ok";
+};
+
+&sdhc_2 {
+	vdd-supply = <&L22A>;
+	qcom,vdd-voltage-level = <2960000 2960000>;
+	qcom,vdd-current-level = <0 800000>;
+
+	vdd-io-supply = <&L5A>;
+	qcom,vdd-io-voltage-level = <1800000 2960000>;
+	qcom,vdd-io-current-level = <0 22000>;
+
+	vdd-io-bias-supply = <&L7A>;
+	qcom,vdd-io-bias-voltage-level = <1256000 1256000>;
+	qcom,vdd-io-bias-current-level = <0 6000>;
+
+	pinctrl-names = "active", "sleep";
+	pinctrl-0 = <&sdc2_clk_on  &sdc2_cmd_on &sdc2_data_on &sdc2_cd_on>;
+	pinctrl-1 = <&sdc2_clk_off &sdc2_cmd_off &sdc2_data_off &sdc2_cd_off>;
+
+//#ifdef ODM_HQ_EDIT
+        /* Jing.Wu@BSP.SDCARD.Gpio, 2020/04/23, Change the cd-gpios status */
+	cd-gpios = <&tlmm 88 GPIO_ACTIVE_HIGH>;
+//#endif
+
+	status = "ok";
+};
+
+&tlmm {
+	smb_int_default: smb_int_default {
+		mux {
+			pins = "gpio105";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio105";
+			bias-pull-up;
+			input-enable;
+		};
+	};
+};
+
+&smb1355 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&smb_int_default>;
+	interrupt-parent = <&tlmm>;
+	interrupts = <105 IRQ_TYPE_LEVEL_LOW>;
+	status = "disabled";
+};
+
+&smb1355_charger {
+	pinctrl-names = "default";
+	pinctrl-0 = <&smb_en_default &pmi632_sense_default &pmi632_ctm_default>;
+	qcom,parallel-mode = <1>;
+	qcom,disable-ctm;
+	qcom,hw-die-temp-mitigation;
+	status = "disabled";
+};
+
+&ufsphy_mem {
+	compatible = "qcom,ufs-phy-qmp-v3-660";
+
+	vdda-phy-supply = <&L4A>; /* 0.9v */
+	vdda-pll-supply = <&L12A>; /* 1.8v */
+	vdda-phy-max-microamp = <51400>;
+	vdda-pll-max-microamp = <14200>;
+
+	status = "ok";
+};
+
+&ufshc_mem {
+	vdd-hba-supply = <&gcc_ufs_phy_gdsc>;
+	vdd-hba-fixed-regulator;
+	vcc-supply = <&L24A>;
+	vcc-voltage-level = <2950000 2960000>;
+	vccq2-supply = <&L11A>;
+	vcc-max-microamp = <600000>;
+	vccq2-max-microamp = <600000>;
+	spm-level = <3>;
+	qcom,vddp-ref-clk-supply = <&L18A>;
+	qcom,vddp-ref-clk-max-microamp = <100>;
+	qcom,vddp-ref-clk-min-uV = <1232000>;
+	qcom,vddp-ref-clk-max-uV = <1232000>;
+
+	status = "ok";
+};
+
+&pm6125_pwm {
+	status = "ok";
+};
+
+/*
+&dsi_td4330_truly_v2_video {
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_pwm";
+	pwms = <&pm6125_pwm 0 0>;
+	qcom,bl-pmic-pwm-period-usecs = <100>;
+	qcom,mdss-dsi-bl-min-level = <1>;
+	qcom,mdss-dsi-bl-max-level = <4095>;
+	qcom,platform-reset-gpio = <&tlmm 82 0>;
+	qcom,platform-bklight-en-gpio = <&pmi632_gpios 6 0>;
+};
+
+&dsi_td4330_truly_v2_cmd {
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_pwm";
+	pwms = <&pm6125_pwm 0 0>;
+	qcom,bl-pmic-pwm-period-usecs = <100>;
+	qcom,mdss-dsi-bl-min-level = <1>;
+	qcom,mdss-dsi-bl-max-level = <4095>;
+	qcom,platform-te-gpio = <&tlmm 81 0>;
+	qcom,platform-reset-gpio = <&tlmm 82 0>;
+	qcom,platform-bklight-en-gpio = <&pmi632_gpios 6 0>;
+};*/
+
+//#ifdef ODM_HQ_EDIT
+/* Sunshiyue, 2020/05/07, Add for panel bring up */
+&dsi_ili9881h_boe_video {
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
+	pwms = <&pm6125_pwm 0 0>;
+	qcom,bl-pmic-pwm-period-usecs = <100>;
+	qcom,mdss-dsi-bl-min-level = <1>;
+	qcom,mdss-dsi-bl-normal-max-level = <2047>;
+	qcom,mdss-dsi-bl-max-level = <2047>;
+	qcom,mdss-brightness-normal-max-level = <2047>;
+	qcom,mdss-brightness-max-level = <2047>;
+	qcom,platform-te-gpio = <&tlmm 81 0>;
+	qcom,platform-reset-gpio = <&tlmm 85 0>;
+	qcom,platform-bklight-en-gpio = <&pmi632_gpios 6 0>;
+};
+
+&dsi_nt36525b_inx_video {
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
+	pwms = <&pm6125_pwm 0 0>;
+	qcom,bl-pmic-pwm-period-usecs = <100>;
+	qcom,mdss-dsi-bl-min-level = <1>;
+	qcom,mdss-dsi-bl-normal-max-level = <2047>;
+	qcom,mdss-dsi-bl-max-level = <2047>;
+	qcom,mdss-brightness-normal-max-level = <2047>;
+	qcom,mdss-brightness-max-level = <2047>;
+	qcom,platform-te-gpio = <&tlmm 81 0>;
+	qcom,platform-reset-gpio = <&tlmm 85 0>;
+	qcom,platform-bklight-en-gpio = <&pmi632_gpios 6 0>;
+};
+
+&dsi_ili9881h_90hz_boe_video {
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
+	pwms = <&pm6125_pwm 0 0>;
+	qcom,bl-pmic-pwm-period-usecs = <100>;
+	qcom,mdss-dsi-bl-min-level = <1>;
+	qcom,mdss-dsi-bl-normal-max-level = <3383>;
+	qcom,mdss-dsi-bl-max-level = <4095>;
+	qcom,mdss-brightness-normal-max-level = <3383>;
+	qcom,mdss-brightness-max-level = <4095>;
+	qcom,mdss-brightness-default-level = <400>;
+	qcom,platform-te-gpio = <&tlmm 81 0>;
+	qcom,platform-reset-gpio = <&tlmm 85 0>;
+	qcom,platform-bklight-en-gpio = <&pmi632_gpios 6 0>;
+};
+
+&dsi_nt36525b_90hz_inx_video {
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
+	pwms = <&pm6125_pwm 0 0>;
+	qcom,bl-pmic-pwm-period-usecs = <100>;
+	qcom,mdss-dsi-bl-min-level = <1>;
+	qcom,mdss-dsi-bl-normal-max-level = <3562>;
+	qcom,mdss-dsi-bl-max-level = <4095>;
+	qcom,mdss-brightness-normal-max-level = <3562>;
+	qcom,mdss-brightness-max-level = <4095>;
+	qcom,mdss-brightness-default-level = <400>;
+	qcom,platform-te-gpio = <&tlmm 81 0>;
+	qcom,platform-reset-gpio = <&tlmm 85 0>;
+	qcom,platform-bklight-en-gpio = <&pmi632_gpios 6 0>;
+};
+
+&dsi_ili9881h_90hz_hlt_video {
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
+	pwms = <&pm6125_pwm 0 0>;
+	qcom,bl-pmic-pwm-period-usecs = <100>;
+	qcom,mdss-dsi-bl-min-level = <1>;
+	qcom,mdss-dsi-bl-normal-max-level = <3562>;
+	qcom,mdss-dsi-bl-max-level = <4095>;
+	qcom,mdss-brightness-normal-max-level = <3562>;
+	qcom,mdss-brightness-max-level = <4095>;
+	qcom,mdss-brightness-default-level = <400>;
+	qcom,platform-te-gpio = <&tlmm 81 0>;
+	qcom,platform-reset-gpio = <&tlmm 85 0>;
+	qcom,platform-bklight-en-gpio = <&pmi632_gpios 6 0>;
+};
+
+&dsi_ili9882n_90hz_txd_video {
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
+	pwms = <&pm6125_pwm 0 0>;
+	qcom,bl-pmic-pwm-period-usecs = <100>;
+	qcom,mdss-dsi-bl-min-level = <1>;
+	qcom,mdss-dsi-bl-normal-max-level = <3562>;
+	qcom,mdss-dsi-bl-max-level = <4095>;
+	qcom,mdss-brightness-normal-max-level = <3562>;
+	qcom,mdss-brightness-max-level = <4095>;
+	qcom,mdss-brightness-default-level = <400>;
+	qcom,platform-te-gpio = <&tlmm 81 0>;
+	qcom,platform-reset-gpio = <&tlmm 85 0>;
+	qcom,platform-bklight-en-gpio = <&pmi632_gpios 6 0>;
+};
+
+&dsi_ili9882n_90hz_boe_video {
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
+	pwms = <&pm6125_pwm 0 0>;
+	qcom,bl-pmic-pwm-period-usecs = <100>;
+	qcom,mdss-dsi-bl-min-level = <1>;
+	qcom,mdss-dsi-bl-normal-max-level = <3383>;
+	qcom,mdss-dsi-bl-max-level = <4095>;
+	qcom,mdss-brightness-normal-max-level = <3383>;
+	qcom,mdss-brightness-max-level = <4095>;
+	qcom,mdss-brightness-default-level = <400>;
+	qcom,platform-te-gpio = <&tlmm 81 0>;
+	qcom,platform-reset-gpio = <&tlmm 85 0>;
+	qcom,platform-bklight-en-gpio = <&pmi632_gpios 6 0>;
+};
+
+&dsi_ili9882n_90hz_inx_video {
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
+	pwms = <&pm6125_pwm 0 0>;
+	qcom,bl-pmic-pwm-period-usecs = <100>;
+	qcom,mdss-dsi-bl-min-level = <1>;
+	qcom,mdss-dsi-bl-normal-max-level = <3562>;
+	qcom,mdss-dsi-bl-max-level = <4095>;
+	qcom,mdss-brightness-normal-max-level = <3562>;
+	qcom,mdss-brightness-max-level = <4095>;
+	qcom,mdss-brightness-default-level = <400>;
+	qcom,platform-te-gpio = <&tlmm 81 0>;
+	qcom,platform-reset-gpio = <&tlmm 85 0>;
+	qcom,platform-bklight-en-gpio = <&pmi632_gpios 6 0>;
+};
+
+&sde_dsi {
+	qcom,dsi-default-panel = <&dsi_ili9881h_boe_video>;
+};
+//#endif
+
+/*
+&qupv3_se2_i2c {
+	status = "okay";
+	qcom,i2c-touch-active="synaptics,tcm-i2c";
+
+	synaptics_tcm@20 {
+		compatible = "synaptics,tcm-i2c";
+		reg = <0x20>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <80 0x2008>;
+		pinctrl-names = "pmx_ts_active","pmx_ts_suspend",
+			"pmx_ts_release";
+		pinctrl-0 = <&ts_int_active &ts_reset_active>;
+		pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
+		pinctrl-2 = <&ts_release>;
+		synaptics,irq-gpio = <&tlmm 80 0x2008>;
+		synaptics,irq-on-state = <0>;
+		synaptics,reset-gpio = <&tlmm 71 0x00>;
+		synaptics,reset-on-state = <0>;
+		synaptics,reset-active-ms = <20>;
+		synaptics,reset-delay-ms = <200>;
+		synaptics,power-delay-ms = <200>;
+		synaptics,ubl-i2c-addr = <0x20>;
+		synaptics,extend_report;
+		synaptics,firmware-name = "synaptics_firmware_k.img";
+
+		panel = <&dsi_td4330_truly_v2_video &dsi_td4330_truly_v2_cmd>;
+	};
+};
+*/
+//#ifdef VENDOR_EDIT
+/*Wenjie.Zhong@BSP.TP.Function, 2020/04/07, add for TP noflash*/
+&qupv3_se2_spi {
+	/* Himax device tree node */
+	status = "ok";
+	ilitek_spi@0 {
+		compatible = "tchip,ilitek";
+		reg = <0>;
+		chip-name0 = "NF_ILI9881H";
+		chip-name1 = "NF_ILI9882N";
+		status = "ok";
+
+		spi-max-frequency = <12000000>;    //4800000,9600000,15000000,19200000
+		reset-gpio = <&tlmm 103 0x00>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <104 0x0>;
+		irq-gpio = <&tlmm 104 0x2002>;
+
+		touchpanel,max-num-support = <10>;
+		touchpanel,tx-rx-num = <18 32>;
+		touchpanel,panel-coords = <720 1600>;
+		touchpanel,display-coords = <720 1600>;
+		touchpanel,touchmajor-limit = <0 54>;
+
+		pinctrl-names = "default", "suspend";
+		pinctrl-0 = <&ts_int_active &ts_reset_active>;
+		pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
+
+		incell_screen;
+		fw_edge_limit_support;
+		black_gesture_support;
+		charger_pump_support;
+		headset_pump_support;
+		esd_handle_support;
+		//spurious_fingerprint_support;
+		//lcd_trigger_fp_check;
+		black_gesture_test_support;
+		noflash_support;
+		smart_gesture_support;
+		pressure_report_support;
+		fw_update_app_support;
+		game_switch_support;
+		drlimit_remove_support;
+		lcd_trigger_load_tp_fw_support;
+		suspend_gesture_cfg;
+		//fw_update_in_probe_with_headfile;
+		new_set_irq_wake_support;
+
+		touchpanel,button-type = <4>;
+	};
+	novatek@1 {
+		compatible = "novatek,nf_nt36525b";
+		reg = <1>;
+		chip-name = "NF_NT36525B";
+		status = "ok";
+
+		spi-max-frequency = <15000000>;	//4800000,9600000,15000000,19200000
+		reset-gpio = <&tlmm 103 0x00>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <104 0x0>;
+		irq-gpio = <&tlmm 104 0x2002>;
+
+		touchpanel,max-num-support = <10>;
+		touchpanel,tx-rx-num = <18 32>;
+		touchpanel,panel-coords = <720 1600>;
+		touchpanel,display-coords = <720 1600>;
+		touchpanel,touchmajor-limit = <0 54>;
+
+		pinctrl-names = "default", "suspend";
+		pinctrl-0 = <&ts_int_active &ts_reset_active>;
+		pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
+
+		incell_screen;
+		fw_edge_limit_support;
+		black_gesture_support;
+		charger_pump_support;
+		headset_pump_support;
+		esd_handle_support;
+		//spurious_fingerprint_support;
+		//lcd_trigger_fp_check;
+		black_gesture_test_support;
+		noflash_support;
+		smart_gesture_support;
+		pressure_report_support;
+		fw_update_app_support;
+		game_switch_support;
+		drlimit_remove_support;
+		lcd_trigger_load_tp_fw_support;
+		//fw_update_in_probe_with_headfile;
+		new_set_irq_wake_support;
+
+		touchpanel,button-type = <4>;
+	};
+};
+//#endif
+
+&thermal_zones {
+	quiet-therm-step {
+		status = "ok";
+	};
+};
+//#ifdef HQ_EDIT
+//fingerprint add
+&tlmm {
+	fpc_reset_int: fpc_reset_int {
+		fpc_reset_low: reset_low {
+			mux {
+				pins = "gpio97";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio97";
+				drive-strength = <2>;
+				bias-disable;
+				output-low;
+			};
+		};
+
+		fpc_reset_high: reset_high {
+			mux {
+				pins = "gpio97";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio97";
+				drive-strength = <2>;
+				bias-disable;
+				output-high;
+			};
+		};
+
+		fpc_int_low: int_low {
+			mux {
+				pins = "gpio34";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio34";
+				drive-strength = <2>;
+				bias-pull-down;
+				input-enable;
+			};
+		};
+	};
+};
+
+&soc {
+	fingerprint: egis {
+		status = "okay";
+		compatible = "egistec,et523";
+		interrupt-parent = <&tlmm>;
+		interrupts = <34 0x00>;
+		egistec,gpio_pwr_en = <&tlmm 93 0x00>;
+		//egistec,gpio_ldo1p8_en = <&tlmm 53 0x00>;
+		//avdd-supply = <&pm8953_l10>;
+		//vddio-supply = <&pm6125_l9>;
+		egistec,gpio_rst = <&tlmm 97 0x00>;
+		egistec,gpio_irq = <&tlmm 34 0x00>;
+	};
+	//#ifdef HQ_EDIT
+	//fingerprint add
+	oppo_fp_common {
+		compatible = "oppo,fp_common";
+		oppo,fp_gpio = <1199 1200>; /* 1199 is gpio32 value,1200 is gpio33 value */
+		pinctrl-names = "default";
+		pinctrl-0 = <&gpio_id1_default &gpio_id2_default>;
+		egis {
+			oppo,fp-id = <1 0>; /* fp id mapping table */
+			vendor-chip = <18>; /* please refer to the struct fp_vendor_t in oppo_fp_commmon.n */
+			eng-menu = "-1,-1"; /* represents SNR, inclination test item in engineer menu, and 0/1 means off/on */
+			chip-name = "E_et520";  /* /proc/fp_id, will be displayed in engineer menu  */
+		};
+		silead {
+			oppo,fp-id = <0 0>; /* fp id mapping table */
+			vendor-chip = <13>; /* please refer to the struct fp_vendor_t in oppo_fp_commmon.n */
+			eng-menu = "-1,-1"; /* represents SNR, inclination test item in engineer menu, and 0/1 means off/on */
+			chip-name = "S_gsl6150";  /* /proc/fp_id, will be displayed in engineer menu  */
+		};
+		cdfinger {
+			oppo,fp-id = <1 1>; /* fp id mapping table */
+			vendor-chip = <19>; /* please refer to the struct fp_vendor_t in oppo_fp_commmon.n */
+			eng-menu = "-1,-1"; /* represents SNR, inclination test item in engineer menu, and 0/1 means off/on */
+			chip-name = "F_fps980s";  /* /proc/fp_id, will be displayed in engineer menu  */
+		};
+		goodix {
+			oppo,fp-id = <0 1>; /* fp id mapping table */
+			vendor-chip = <20>; /* please refer to the struct fp_vendor_t in oppo_fp_commmon.n */
+			eng-menu = "-1,-1"; /* represents SNR, inclination test item in engineer menu, and 0/1 means off/on */
+			chip-name = "G_3688";  /* /proc/fp_id, will be displayed in engineer menu  */
+		};
+	};
+	//#endif
+	silead_fp {
+		status = "okay";
+		compatible = "sil,silead_fp";
+		qcom,qup-id = <5>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <34 0x00>;
+		avdd-gpios = <&tlmm 93 0x00>;
+		rst-gpios  = <&tlmm 97 0x00>;
+		irq-gpios  = <&tlmm 34 0x00>;
+	};
+	cdfinger_fingerprint {
+        	compatible = "cdfinger,fingerprint";
+		interrupt-parent = <&tlmm>;
+		interrupts = <34 0x0>;
+		cdfinger,reset_gpio = <&tlmm 97 0>;
+		cdfinger,irq_gpio = <&tlmm 34 0>;
+        	cdfinger,pwr_gpio = <&tlmm 93 0>;
+		//vdd-supply = <&pm8937_l6>;
+	};
+	goodix_fp {
+		compatible = "goodix,goodix_fp_gf3626";
+		interrupt-parent = <&tlmm>;
+		interrupts = <34 0>;
+		goodix,gpio_irq = <&tlmm 34 0x0>;
+		goodix,gpio_reset = <&tlmm 97 0x0>;
+		goodix,gpio_pwr = <&tlmm 93 0x0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&gpio_goodix_irq_default>;
+	};
+};
+//endif
+
+//#ifdef VENDOR_EDIT
+///* Yichun.Chen  PSW.BSP.CHG  2019-05-30  oppo charge edit dts */
+#include "oppo-charge-MP.dtsi"
+//endif

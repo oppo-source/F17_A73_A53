@@ -1,0 +1,12 @@
+/dts-v1/;
+
+#include "bengal.dtsi"
+#include "bengal-qrd-MP.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. Bengal QRD";
+	compatible = "qcom,bengal-qrd", "qcom,bengal", "qcom,qrd";
+	qcom,board-id = <0x1000B 0>;
+	oppo,dtsi_no = <20021>;
+	oppo,pcb-version-MP = <1>; // MP-SGM
+};

@@ -1,0 +1,62 @@
+config OPPO_ARCH_FILE
+  bool "for build directory oppo"
+  ---help---
+  say Y to buid in
+
+config OPPO_COMMON_SOFT
+  bool "config oppo common software"
+  select OPPO_ARCH_FILE
+  help
+  define this config to get project verion from sharemem.
+  Maybe this value is from CDT or dynamic identify by hardware
+  id.
+
+config OPPO_DEVICE_IFNO
+  bool "config oppo devinfo"
+  select OPPO_ARCH_FILE
+  help
+  define this config to compile devinfo.c for device register
+#ifdef VENDOR_EDIT
+#/* Yu.Kun@CN.NFC.Basic.Hardware, 2020/03/24, Add for oppo nfc chipset */
+config OPPO_NFC
+  bool "config oppo nfc chipset"
+  select OPPO_ARCH_FILE
+  help
+  define this config to get nfc chipset version from dts.
+#endif /* VENDOR_EDIT */
+
+source "drivers/soc/oppo/project_info/Kconfig"
+source "drivers/soc/oppo/device_info/Kconfig"
+
+source "drivers/soc/oppo/oppo_healthinfo/Kconfig"
+#ifdef VENDOR_EDIT
+#/* Yu.Kun@CN.NFC.Basic.Hardware, 2020/03/24, Add for oppo nfc chipset */
+source "drivers/soc/oppo/oppo_nfc/Kconfig"
+#endif /* VENDOR_EDIT */
+
+#Bin.Xu@BSP.Kernel.Stability, OPPO_SHUTDOWN_DETECT, 2020/5/11, Add for shutdown detect
+source "drivers/soc/oppo/oppo_shutdown_detect/Kconfig"
+
+#ifdef VENDOR_EDIT
+#//zhenwenxian@BSP.Power.Basic, 2017/01/12, Add for NV recovery
+source "drivers/soc/oppo/oppo_mdmrst/Kconfig"
+#endif /* VENDOR_EDIT */
+source "drivers/soc/oppo/oppo_hypnus/Kconfig"
+
+#ifdef VENDOR_EDIT
+#GaoTing.Gan@PSW.MultiMedia.MediaServer, 2019/03/07, Add for kevent feedback
+source "drivers/soc/oppo/oppo_kevent_feedback/Kconfig"
+#endif /* VENDOR_EDIT */
+
+#ifdef VENDOR_EDIT
+#huangjianan@TECH.Storage.FS, 2020/04/03, Add for NandSwap
+source "drivers/soc/oppo/oppo_nandswap/Kconfig"
+#endif
+
+#Kun.Hu@TECH.BSP.Stability.PHOENIX_PROJECT 2019/06/15, Add for PHOENIX_PROJECT
+source "drivers/soc/oppo/oppo_phoenix/Kconfig"
+
+#ifdef OPLUS_FEATURE_LOWMEM_DBG
+#Hailong.Liu@BSP.Kernel.MM, 2020/06/19, Add for dump memory usage when lowmmem occurs.
+source "drivers/soc/oppo/lowmem_dbg/Kconfig"
+##endif /* OPLUS_FEATURE_LOWMEM_DBG */

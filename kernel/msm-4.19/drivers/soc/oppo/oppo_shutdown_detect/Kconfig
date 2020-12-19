@@ -1,0 +1,5 @@
+config OPPO_SHUTDOWN_DETECT
+	 bool "shutdown hang detect"
+	default n
+	help
+            define this config to enable shutdown_detect.

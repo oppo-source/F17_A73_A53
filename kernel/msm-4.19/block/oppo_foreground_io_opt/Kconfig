@@ -1,0 +1,6 @@
+config OPPO_FG_IO_OPT
+       bool "Enable oppo foreground io optimization"
+       depends on FG_TASK_UID
+       default y
+       help
+         oppo foreground io optimization
